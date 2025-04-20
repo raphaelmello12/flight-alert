@@ -14,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -21,7 +23,10 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          ls -la
+          cat package.json
 
       - name: Run price check
         env:
@@ -29,12 +34,17 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
-        run: node fetch-check.js
+        run: |
+          echo "Running price check..."
+          node fetch-check.js
+          echo "Price check completed"
+          ls -la
 
       - name: Commit changes
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git add price.json price-history.json
+          git status
+          git add price.json price-history.json || echo "No price files to add"
           git commit -m "Update flight prices" || echo "No changes to commit"
-          git push
+          git push || echo "No changes to push"
