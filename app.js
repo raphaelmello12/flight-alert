@@ -1,6 +1,8 @@
 async function fetchData() {
     try {
-        const response = await fetch('price.json');
+        // Get the repository name from the current URL for GitHub Pages
+        const repoPath = window.location.pathname.split('/')[1];
+        const response = await fetch(`/${repoPath}/price.json`);
         const data = await response.json();
         updateUI(data);
     } catch (error) {
@@ -8,6 +10,8 @@ async function fetchData() {
         document.getElementById('flights').innerHTML = `
             <div class="text-red-500 text-center">
                 Error loading flight data. Please try again later.
+                <br>
+                <small class="text-gray-500">${error.message}</small>
             </div>
         `;
     }
@@ -58,30 +62,37 @@ function updateUI(data) {
         `Last checked: ${lastChecked.toLocaleString()}`;
 
     // Update configuration display
-    const configHtml = `
-        <div class="config-item">
-            <span class="font-medium">Route:</span>
-            ${data.config.origin} → ${data.config.destination}
+    const configHtml = data.config.searches.map((search, index) => `
+        <div class="border p-4 rounded-lg">
+            <h3 class="font-medium mb-2">Route ${index + 1}</h3>
+            <div class="config-item">
+                <span class="font-medium">Route:</span>
+                ${search.origin} → ${search.destination}
+            </div>
+            <div class="config-item">
+                <span class="font-medium">Departure:</span>
+                ${search.departureDateRange.start} to ${search.departureDateRange.end}
+            </div>
+            <div class="config-item">
+                <span class="font-medium">Return:</span>
+                ${search.returnDateRange.start} to ${search.returnDateRange.end}
+            </div>
         </div>
-        <div class="config-item">
-            <span class="font-medium">Departure:</span>
-            ${data.config.departureDateRange.start} to ${data.config.departureDateRange.end}
-        </div>
-        <div class="config-item">
-            <span class="font-medium">Return:</span>
-            ${data.config.returnDateRange.start} to ${data.config.returnDateRange.end}
-        </div>
-        <div class="config-item">
-            <span class="font-medium">Max Price:</span>
-            ${data.currency} ${data.config.maxPrice}
-        </div>
-        <div class="config-item">
-            <span class="font-medium">Passengers:</span>
-            ${data.config.passengers}
-        </div>
-        <div class="config-item">
-            <span class="font-medium">Currency:</span>
-            ${data.currency}
+    `).join('') + `
+        <div class="border p-4 rounded-lg">
+            <h3 class="font-medium mb-2">General Settings</h3>
+            <div class="config-item">
+                <span class="font-medium">Max Price:</span>
+                ${data.currency} ${data.config.maxPrice}
+            </div>
+            <div class="config-item">
+                <span class="font-medium">Passengers:</span>
+                ${data.config.passengers}
+            </div>
+            <div class="config-item">
+                <span class="font-medium">Currency:</span>
+                ${data.currency}
+            </div>
         </div>
     `;
     document.getElementById('config').innerHTML = configHtml;
