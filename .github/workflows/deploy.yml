@@ -60,49 +60,55 @@ jobs:
           npm install
           npm install -g jq
       
-      - name: Update config if inputs provided
+      - name: Update config
         run: |
-          if [[ -n "${{ inputs.route1 }}" || -n "${{ inputs.departure_date_start }}" || -n "${{ inputs.max_price }}" ]]; then
-            content=$(cat config.json)
-            
-            # Set fixed values
-            content=$(echo "$content" | jq '.currency = "BRL" | .passengers = 2')
-
-            # Update routes
-            if [[ -n "${{ inputs.route1 }}" ]]; then
-              route1='${{ inputs.route1 }}'
-              content=$(echo "$content" | jq --argjson route "$route1" '.searches[0].origin = $route.origin | .searches[0].destination = $route.destination')
-            fi
-            if [[ -n "${{ inputs.route2 }}" ]]; then
-              route2='${{ inputs.route2 }}'
-              content=$(echo "$content" | jq --argjson route "$route2" '.searches[1].origin = $route.origin | .searches[1].destination = $route.destination')
-            fi
-
-            # Update date ranges
-            if [[ -n "${{ inputs.departure_date_start }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_start }}" '.searches[].departureDateRange.start = $val')
-            fi
-            if [[ -n "${{ inputs.departure_date_end }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_end }}" '.searches[].departureDateRange.end = $val')
-            fi
-            if [[ -n "${{ inputs.return_date_start }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.return_date_start }}" '.searches[].returnDateRange.start = $val')
-            fi
-            if [[ -n "${{ inputs.return_date_end }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.return_date_end }}" '.searches[].returnDateRange.end = $val')
-            fi
-
-            # Update max price
-            if [[ -n "${{ inputs.max_price }}" ]]; then
-              content=$(echo "$content" | jq --argjson val ${{ inputs.max_price }} '.maxPrice = $val')
-            fi
-
-            # Keep only 2 routes
-            content=$(echo "$content" | jq 'if (.searches | length > 2) then .searches = .searches[0:2] else . end')
-
-            echo "$content" > config.json
-            cat config.json
+          # Always ensure we have a valid config with BRL currency and 2 passengers
+          content=$(cat config.json)
+          content=$(echo "$content" | jq '.currency = "BRL" | .passengers = 2')
+          
+          # Update config with any provided inputs
+          if [[ -n "${{ inputs.route1 }}" ]]; then
+            route1='${{ inputs.route1 }}'
+            content=$(echo "$content" | jq --argjson route "$route1" '.searches[0].origin = $route.origin | .searches[0].destination = $route.destination')
           fi
+          if [[ -n "${{ inputs.route2 }}" ]]; then
+            route2='${{ inputs.route2 }}'
+            content=$(echo "$content" | jq --argjson route "$route2" '.searches[1].origin = $route.origin | .searches[1].destination = $route.destination')
+          fi
+
+          if [[ -n "${{ inputs.departure_date_start }}" ]]; then
+            content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_start }}" '.searches[].departureDateRange.start = $val')
+          fi
+          if [[ -n "${{ inputs.departure_date_end }}" ]]; then
+            content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_end }}" '.searches[].departureDateRange.end = $val')
+          fi
+          if [[ -n "${{ inputs.return_date_start }}" ]]; then
+            content=$(echo "$content" | jq --arg val "${{ inputs.return_date_start }}" '.searches[].returnDateRange.start = $val')
+          fi
+          if [[ -n "${{ inputs.return_date_end }}" ]]; then
+            content=$(echo "$content" | jq --arg val "${{ inputs.return_date_end }}" '.searches[].returnDateRange.end = $val')
+          fi
+
+          if [[ -n "${{ inputs.max_price }}" ]]; then
+            content=$(echo "$content" | jq --argjson val ${{ inputs.max_price }} '.maxPrice = $val')
+          fi
+
+          # Keep only 2 routes
+          content=$(echo "$content" | jq 'if (.searches | length > 2) then .searches = .searches[0:2] else . end')
+
+          # Create empty price.json if it doesn't exist
+          if [ ! -f "price.json" ]; then
+            echo '{
+              "lastChecked": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+              "flights": [],
+              "currency": "BRL",
+              "config": '$(echo "$content" | jq .)',
+              "history": []
+            }' > price.json
+          fi
+
+          echo "$content" > config.json
+          cat config.json
       
       - name: Run price check
         env:
