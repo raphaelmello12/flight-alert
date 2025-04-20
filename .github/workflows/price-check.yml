@@ -5,6 +5,11 @@ on:
     - cron: "0 * * * *" # Run hourly
   workflow_dispatch: # Allow manual triggering
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   check-prices:
     runs-on: ubuntu-latest
@@ -29,6 +34,18 @@ jobs:
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
         run: node fetch-check.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Configure Git
         run: |
