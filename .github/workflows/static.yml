@@ -1,0 +1,26 @@
+name: Deploy static content to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main         # runs on every push to main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read     # for checkout
+      pages: write       # to deploy
+      id-token: write    # for authentication
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Upload artifact 📦
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./         # or 'docs/' if your site lives there
+
+      - name: Deploy to GitHub Pages 🚀
+        uses: actions/deploy-pages@v1
