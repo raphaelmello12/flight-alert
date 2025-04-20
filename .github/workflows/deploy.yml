@@ -5,52 +5,34 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      currency:
-        description: 'Currency (USD, EUR, GBP, etc)'
+      route1:
+        description: 'Route 1 (JSON format: {"origin": "XXX", "destination": "YYY"})'
         required: false
         type: string
-        default: 'USD'
-      route1_origin:
-        description: 'Route 1: Origin airport code'
+      route2:
+        description: 'Route 2 (JSON format: {"origin": "XXX", "destination": "YYY"})'
         required: false
         type: string
-      route1_destination:
-        description: 'Route 1: Destination airport code'
+      departure_date_start:
+        description: 'Start of departure date range (YYYY-MM-DD)'
         required: false
         type: string
-      route2_origin:
-        description: 'Route 2: Origin airport code'
+      departure_date_end:
+        description: 'End of departure date range (YYYY-MM-DD)'
         required: false
         type: string
-      route2_destination:
-        description: 'Route 2: Destination airport code'
+      return_date_start:
+        description: 'Start of return date range (YYYY-MM-DD)'
         required: false
         type: string
-      route3_origin:
-        description: 'Route 3: Origin airport code'
-        required: false
-        type: string
-      route3_destination:
-        description: 'Route 3: Destination airport code'
-        required: false
-        type: string
-      departure_date:
-        description: 'Departure date (YYYY-MM-DD)'
-        required: false
-        type: string
-      return_date:
-        description: 'Return date (YYYY-MM-DD)'
+      return_date_end:
+        description: 'End of return date range (YYYY-MM-DD)'
         required: false
         type: string
       max_price:
         description: 'Maximum price'
         required: false
         type: number
-      passengers:
-        description: 'Number of passengers'
-        required: false
-        type: number
-        default: 2
 
 permissions:
   contents: read
@@ -80,40 +62,43 @@ jobs:
       
       - name: Update config if inputs provided
         run: |
-          if [[ -n "${{ inputs.currency }}" || -n "${{ inputs.route1_origin }}" || -n "${{ inputs.route1_destination }}" || -n "${{ inputs.departure_date }}" || -n "${{ inputs.return_date }}" || -n "${{ inputs.max_price }}" || -n "${{ inputs.passengers }}" ]]; then
+          if [[ -n "${{ inputs.route1 }}" || -n "${{ inputs.departure_date_start }}" || -n "${{ inputs.max_price }}" ]]; then
             content=$(cat config.json)
             
-            # Update currency
-            if [[ -n "${{ inputs.currency }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.currency }}" '.currency = $val')
-            fi
+            # Set fixed values
+            content=$(echo "$content" | jq '.currency = "BRL" | .passengers = 2')
 
             # Update routes
-            if [[ -n "${{ inputs.route1_origin }}" && -n "${{ inputs.route1_destination }}" ]]; then
-              content=$(echo "$content" | jq --arg org "${{ inputs.route1_origin }}" --arg dst "${{ inputs.route1_destination }}" '.searches[0].origin = $org | .searches[0].destination = $dst')
+            if [[ -n "${{ inputs.route1 }}" ]]; then
+              route1='${{ inputs.route1 }}'
+              content=$(echo "$content" | jq --argjson route "$route1" '.searches[0].origin = $route.origin | .searches[0].destination = $route.destination')
             fi
-            if [[ -n "${{ inputs.route2_origin }}" && -n "${{ inputs.route2_destination }}" ]]; then
-              content=$(echo "$content" | jq --arg org "${{ inputs.route2_origin }}" --arg dst "${{ inputs.route2_destination }}" '.searches[1].origin = $org | .searches[1].destination = $dst')
-            fi
-            if [[ -n "${{ inputs.route3_origin }}" && -n "${{ inputs.route3_destination }}" ]]; then
-              content=$(echo "$content" | jq --arg org "${{ inputs.route3_origin }}" --arg dst "${{ inputs.route3_destination }}" '.searches[2].origin = $org | .searches[2].destination = $dst')
-            fi
-
-            # Update dates for all routes
-            if [[ -n "${{ inputs.departure_date }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date }}" '.searches[].departureDateRange.start = $val | .searches[].departureDateRange.end = $val')
-            fi
-            if [[ -n "${{ inputs.return_date }}" ]]; then
-              content=$(echo "$content" | jq --arg val "${{ inputs.return_date }}" '.searches[].returnDateRange.start = $val | .searches[].returnDateRange.end = $val')
+            if [[ -n "${{ inputs.route2 }}" ]]; then
+              route2='${{ inputs.route2 }}'
+              content=$(echo "$content" | jq --argjson route "$route2" '.searches[1].origin = $route.origin | .searches[1].destination = $route.destination')
             fi
 
-            # Update general settings
+            # Update date ranges
+            if [[ -n "${{ inputs.departure_date_start }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_start }}" '.searches[].departureDateRange.start = $val')
+            fi
+            if [[ -n "${{ inputs.departure_date_end }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date_end }}" '.searches[].departureDateRange.end = $val')
+            fi
+            if [[ -n "${{ inputs.return_date_start }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.return_date_start }}" '.searches[].returnDateRange.start = $val')
+            fi
+            if [[ -n "${{ inputs.return_date_end }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.return_date_end }}" '.searches[].returnDateRange.end = $val')
+            fi
+
+            # Update max price
             if [[ -n "${{ inputs.max_price }}" ]]; then
               content=$(echo "$content" | jq --argjson val ${{ inputs.max_price }} '.maxPrice = $val')
             fi
-            if [[ -n "${{ inputs.passengers }}" ]]; then
-              content=$(echo "$content" | jq --argjson val ${{ inputs.passengers }} '.passengers = $val')
-            fi
+
+            # Keep only 2 routes
+            content=$(echo "$content" | jq 'if (.searches | length > 2) then .searches = .searches[0:2] else . end')
 
             echo "$content" > config.json
             cat config.json
