@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   check-prices:
@@ -16,8 +14,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: "gh-pages"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,25 +31,10 @@ jobs:
           TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
         run: node fetch-check.js
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Configure Git
+      - name: Commit changes
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-
-      - name: Push changes
-        run: |
-          git add price.json
-          git commit -m "Update flight prices"
+          git add price.json price-history.json
+          git commit -m "Update flight prices" || echo "No changes to commit"
           git push
