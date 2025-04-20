@@ -7,8 +7,14 @@ const twilioClient = new twilio(
 );
 
 function formatFlightMessage(flights) {
+  const currencySymbol = config.currency === 'USD' ? '$' : 
+                        config.currency === 'EUR' ? '€' : 
+                        config.currency === 'GBP' ? '£' : 
+                        config.currency === 'BRL' ? 'R$' : 
+                        config.currency;
+  
   return flights.map(flight => `
-    Price: $${flight.price}
+    Price: ${currencySymbol}${flight.price}
     Departure: ${new Date(flight.departureDate).toLocaleDateString()}
     Return: ${new Date(flight.returnDate).toLocaleDateString()}
     Airline: ${flight.airline}

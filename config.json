@@ -1,18 +1,45 @@
 {
-  "search": {
-    "origin": "SFO",
-    "destination": "JFK",
-    "departureDateRange": {
-      "start": "2024-06-01",
-      "end": "2024-06-05"
+  "currency": "USD",
+  "maxPrice": 1000,
+  "passengers": 2,
+  "searches": [
+    {
+      "origin": "GRU",
+      "destination": "MIA",
+      "departureDateRange": {
+        "start": "2024-07-01",
+        "end": "2024-07-01"
+      },
+      "returnDateRange": {
+        "start": "2024-07-15",
+        "end": "2024-07-15"
+      }
     },
-    "returnDateRange": {
-      "start": "2024-06-07",
-      "end": "2024-06-10"
+    {
+      "origin": "GRU",
+      "destination": "JFK",
+      "departureDateRange": {
+        "start": "2024-07-01",
+        "end": "2024-07-01"
+      },
+      "returnDateRange": {
+        "start": "2024-07-15",
+        "end": "2024-07-15"
+      }
     },
-    "passengers": 2,
-    "maxPrice": 600
-  },
+    {
+      "origin": "GRU",
+      "destination": "LAX",
+      "departureDateRange": {
+        "start": "2024-07-01",
+        "end": "2024-07-01"
+      },
+      "returnDateRange": {
+        "start": "2024-07-15",
+        "end": "2024-07-15"
+      }
+    }
+  ],
   "schedule": {
     "interval": "hourly"
   },

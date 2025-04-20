@@ -73,7 +73,15 @@ function updateUI(data) {
         </div>
         <div class="config-item">
             <span class="font-medium">Max Price:</span>
-            $${data.config.maxPrice}
+            ${data.currency} ${data.config.maxPrice}
+        </div>
+        <div class="config-item">
+            <span class="font-medium">Passengers:</span>
+            ${data.config.passengers}
+        </div>
+        <div class="config-item">
+            <span class="font-medium">Currency:</span>
+            ${data.currency}
         </div>
     `;
     document.getElementById('config').innerHTML = configHtml;
@@ -91,7 +99,7 @@ function updateUI(data) {
     const flightsHtml = data.flights.map(flight => `
         <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
             <div class="flex justify-between items-center mb-2">
-                <span class="text-2xl font-bold text-blue-600">$${flight.price}</span>
+                <span class="text-2xl font-bold text-blue-600">${data.currency} ${flight.price}</span>
                 <span class="text-sm text-gray-600">${flight.airline}</span>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -135,7 +143,7 @@ function updateUI(data) {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Price ($)',
+                    label: `Price (${data.currency})`,
                     data: prices,
                     borderColor: 'rgb(59, 130, 246)',
                     tension: 0.1

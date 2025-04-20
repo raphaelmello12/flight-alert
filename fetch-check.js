@@ -10,54 +10,75 @@ const SERPAPI_KEY = process.env.SERPAPI_KEY;
 const RESULTS_FILE = 'price.json';
 const HISTORY_FILE = 'price-history.json';
 
-async function fetchFlights() {
+async function fetchSingleRoute(searchConfig) {
   try {
-    console.log('Starting flight search with parameters:', {
-      origin: config.search.origin,
-      destination: config.search.destination,
-      outbound_date: config.search.departureDateRange.start,
-      return_date: config.search.returnDateRange.start
+    console.log(`Starting flight search for ${searchConfig.name}:`, {
+      origin: searchConfig.origin,
+      destination: searchConfig.destination,
+      outbound_date: searchConfig.departureDateRange.start,
+      return_date: searchConfig.returnDateRange.start
     });
 
     const response = await axios.get('https://serpapi.com/search.json', {
       params: {
         engine: 'google_flights',
         api_key: SERPAPI_KEY,
-        departure_id: config.search.origin,
-        arrival_id: config.search.destination,
-        outbound_date: config.search.departureDateRange.start,
-        return_date: config.search.returnDateRange.start,
-        currency: 'USD',
+        departure_id: searchConfig.origin,
+        arrival_id: searchConfig.destination,
+        outbound_date: searchConfig.departureDateRange.start,
+        return_date: searchConfig.returnDateRange.start,
+        currency: config.currency,
         hl: 'en',
-        adults: config.search.passengers
+        adults: config.passengers
       }
     });
 
-    console.log('API Response status:', response.status);
-    console.log('API Response data structure:', Object.keys(response.data));
+    console.log(`API Response status for ${searchConfig.name}:`, response.status);
 
-    // Create a mock response if no flights are found (for testing)
     if (!response.data.best_flights || !Array.isArray(response.data.best_flights)) {
-      console.log('No flights found, creating mock data for testing');
-      response.data.best_flights = [{
-        price: config.search.maxPrice + 100, // Price above threshold
-        departure_date: config.search.departureDateRange.start,
-        return_date: config.search.returnDateRange.start,
-        airline: 'Sample Airline'
+      console.log(`No flights found for ${searchConfig.name}, creating mock data`);
+      return [{
+        price: config.maxPrice + 100,
+        departureDate: searchConfig.departureDateRange.start,
+        returnDate: searchConfig.returnDateRange.start,
+        airline: 'Sample Airline',
+        route: searchConfig.name
       }];
     }
 
-    const flights = response.data.best_flights.map(flight => ({
+    return response.data.best_flights.map(flight => ({
       price: typeof flight.price === 'string' ? 
         parseFloat(flight.price.replace(/[^0-9.]/g, '')) : 
         flight.price,
-      departureDate: flight.departure_date || config.search.departureDateRange.start,
-      returnDate: flight.return_date || config.search.returnDateRange.start,
-      deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${config.search.origin}%20to%20${config.search.destination}`,
-      airline: flight.airline || 'Multiple Airlines'
+      departureDate: flight.departure_date || searchConfig.departureDateRange.start,
+      returnDate: flight.return_date || searchConfig.returnDateRange.start,
+      deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${searchConfig.origin}%20to%20${searchConfig.destination}`,
+      airline: flight.airline || 'Multiple Airlines',
+      route: searchConfig.name
     }));
+  } catch (error) {
+    console.error(`Error fetching flights for ${searchConfig.name}:`, error.message);
+    return [{
+      price: config.maxPrice + 100,
+      departureDate: searchConfig.departureDateRange.start,
+      returnDate: searchConfig.returnDateRange.start,
+      airline: 'Error fetching flights',
+      route: searchConfig.name
+    }];
+  }
+}
 
-    console.log('Processed flights:', flights);
+async function fetchFlights() {
+  try {
+    // Fetch flights for all routes
+    const allFlightsPromises = config.searches.map(searchConfig => 
+      fetchSingleRoute(searchConfig)
+    );
+    
+    const allFlightsArrays = await Promise.all(allFlightsPromises);
+    const allFlights = allFlightsArrays.flat();
+
+    console.log('All processed flights:', allFlights);
 
     // Load existing history
     let history = [];
@@ -69,7 +90,7 @@ async function fetchFlights() {
     const timestamp = new Date().toISOString();
     history.push({
       timestamp,
-      flights
+      flights: allFlights
     });
 
     // Keep only last 30 days of history
@@ -79,8 +100,13 @@ async function fetchFlights() {
 
     const results = {
       lastChecked: timestamp,
-      flights,
-      config: config.search,
+      flights: allFlights,
+      currency: config.currency,
+      config: {
+        searches: config.searches,
+        maxPrice: config.maxPrice,
+        passengers: config.passengers
+      },
       history
     };
 
@@ -88,31 +114,26 @@ async function fetchFlights() {
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 
     // Check for flights under threshold
-    const cheapFlights = flights.filter(f => f.price <= config.search.maxPrice);
+    const cheapFlights = allFlights.filter(f => f.price <= config.maxPrice);
     if (cheapFlights.length > 0) {
       await sendNotifications(cheapFlights);
     }
 
-    console.log('Successfully completed flight check');
+    console.log('Successfully completed all flight checks');
 
   } catch (error) {
-    console.error('Error details:', {
-      message: error.message,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data
-      } : 'No response data',
-      config: error.config ? {
-        url: error.config.url,
-        params: error.config.params
-      } : 'No config data'
-    });
+    console.error('Error in main process:', error);
     
     // Create empty results file to prevent deployment failures
     const results = {
       lastChecked: new Date().toISOString(),
       flights: [],
-      config: config.search,
+      currency: config.currency,
+      config: {
+        searches: config.searches,
+        maxPrice: config.maxPrice,
+        passengers: config.passengers
+      },
       history: []
     };
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));

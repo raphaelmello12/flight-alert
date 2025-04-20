@@ -4,6 +4,53 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      currency:
+        description: 'Currency (USD, EUR, GBP, etc)'
+        required: false
+        type: string
+        default: 'USD'
+      route1_origin:
+        description: 'Route 1: Origin airport code'
+        required: false
+        type: string
+      route1_destination:
+        description: 'Route 1: Destination airport code'
+        required: false
+        type: string
+      route2_origin:
+        description: 'Route 2: Origin airport code'
+        required: false
+        type: string
+      route2_destination:
+        description: 'Route 2: Destination airport code'
+        required: false
+        type: string
+      route3_origin:
+        description: 'Route 3: Origin airport code'
+        required: false
+        type: string
+      route3_destination:
+        description: 'Route 3: Destination airport code'
+        required: false
+        type: string
+      departure_date:
+        description: 'Departure date (YYYY-MM-DD)'
+        required: false
+        type: string
+      return_date:
+        description: 'Return date (YYYY-MM-DD)'
+        required: false
+        type: string
+      max_price:
+        description: 'Maximum price'
+        required: false
+        type: number
+      passengers:
+        description: 'Number of passengers'
+        required: false
+        type: number
+        default: 2
 
 permissions:
   contents: read
@@ -29,8 +76,48 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          ls -la
-          cat package.json
+          npm install -g jq
+      
+      - name: Update config if inputs provided
+        run: |
+          if [[ -n "${{ inputs.currency }}" || -n "${{ inputs.route1_origin }}" || -n "${{ inputs.route1_destination }}" || -n "${{ inputs.departure_date }}" || -n "${{ inputs.return_date }}" || -n "${{ inputs.max_price }}" || -n "${{ inputs.passengers }}" ]]; then
+            content=$(cat config.json)
+            
+            # Update currency
+            if [[ -n "${{ inputs.currency }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.currency }}" '.currency = $val')
+            fi
+
+            # Update routes
+            if [[ -n "${{ inputs.route1_origin }}" && -n "${{ inputs.route1_destination }}" ]]; then
+              content=$(echo "$content" | jq --arg org "${{ inputs.route1_origin }}" --arg dst "${{ inputs.route1_destination }}" '.searches[0].origin = $org | .searches[0].destination = $dst')
+            fi
+            if [[ -n "${{ inputs.route2_origin }}" && -n "${{ inputs.route2_destination }}" ]]; then
+              content=$(echo "$content" | jq --arg org "${{ inputs.route2_origin }}" --arg dst "${{ inputs.route2_destination }}" '.searches[1].origin = $org | .searches[1].destination = $dst')
+            fi
+            if [[ -n "${{ inputs.route3_origin }}" && -n "${{ inputs.route3_destination }}" ]]; then
+              content=$(echo "$content" | jq --arg org "${{ inputs.route3_origin }}" --arg dst "${{ inputs.route3_destination }}" '.searches[2].origin = $org | .searches[2].destination = $dst')
+            fi
+
+            # Update dates for all routes
+            if [[ -n "${{ inputs.departure_date }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.departure_date }}" '.searches[].departureDateRange.start = $val | .searches[].departureDateRange.end = $val')
+            fi
+            if [[ -n "${{ inputs.return_date }}" ]]; then
+              content=$(echo "$content" | jq --arg val "${{ inputs.return_date }}" '.searches[].returnDateRange.start = $val | .searches[].returnDateRange.end = $val')
+            fi
+
+            # Update general settings
+            if [[ -n "${{ inputs.max_price }}" ]]; then
+              content=$(echo "$content" | jq --argjson val ${{ inputs.max_price }} '.maxPrice = $val')
+            fi
+            if [[ -n "${{ inputs.passengers }}" ]]; then
+              content=$(echo "$content" | jq --argjson val ${{ inputs.passengers }} '.passengers = $val')
+            fi
+
+            echo "$content" > config.json
+            cat config.json
+          fi
       
       - name: Run price check
         env:
@@ -38,20 +125,12 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
-        run: |
-          echo "Running price check..."
-          node fetch-check.js
-          echo "Price check completed"
-          ls -la
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+        run: node fetch-check.js
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-          retention-days: 1
 
   deploy:
     needs: build
