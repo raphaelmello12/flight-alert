@@ -12,6 +12,13 @@ const HISTORY_FILE = 'price-history.json';
 
 async function fetchFlights() {
   try {
+    console.log('Starting flight search with parameters:', {
+      origin: config.search.origin,
+      destination: config.search.destination,
+      outbound_date: config.search.departureDateRange.start,
+      return_date: config.search.returnDateRange.end
+    });
+
     const response = await axios.get('https://serpapi.com/search.json', {
       params: {
         engine: 'google_flights',
@@ -19,20 +26,31 @@ async function fetchFlights() {
         departure_id: config.search.origin,
         arrival_id: config.search.destination,
         outbound_date: config.search.departureDateRange.start,
-        return_date: config.search.returnDateRange.end,
+        return_date: config.search.returnDateRange.start,
         currency: 'USD',
         hl: 'en',
-        gl: 'us'
+        type: 'round',
+        adults: config.search.passengers
       }
     });
 
+    console.log('API Response status:', response.status);
+    console.log('API Response data structure:', Object.keys(response.data));
+
+    if (!response.data.best_flights || !Array.isArray(response.data.best_flights)) {
+      console.log('Full API Response:', JSON.stringify(response.data, null, 2));
+      throw new Error('Invalid response format from SerpApi');
+    }
+
     const flights = response.data.best_flights.map(flight => ({
-      price: flight.price,
-      departureDate: flight.flights[0].departure_airport.time,
-      returnDate: flight.flights[flight.flights.length - 1].arrival_airport.time,
-      deepLink: `https://www.google.com/travel/flights?q=${encodeURIComponent(`${config.search.origin} to ${config.search.destination}`)}`,
-      airline: flight.flights[0].airline || 'Multiple Airlines'
+      price: parseFloat(flight.price.replace(/[^0-9.]/g, '')),
+      departureDate: flight.departure_date || config.search.departureDateRange.start,
+      returnDate: flight.return_date || config.search.returnDateRange.start,
+      deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${config.search.origin}%20to%20${config.search.destination}`,
+      airline: flight.airline || 'Multiple Airlines'
     }));
+
+    console.log('Processed flights:', flights);
 
     // Load existing history
     let history = [];
@@ -56,7 +74,7 @@ async function fetchFlights() {
       lastChecked: timestamp,
       flights,
       config: config.search,
-      history: history
+      history
     };
 
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));
@@ -68,15 +86,21 @@ async function fetchFlights() {
       await sendNotifications(cheapFlights);
     }
 
-    // Commit and push to gh-pages branch
-    const git = simpleGit();
-    await git.add([RESULTS_FILE, HISTORY_FILE]);
-    await git.commit('Update flight prices and history');
-    await git.push('origin', 'gh-pages');
+    console.log('Successfully completed flight check');
 
   } catch (error) {
-    console.error('Error fetching flights:', error.message);
-    process.exit(1);
+    console.error('Error details:', {
+      message: error.message,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data
+      } : 'No response data',
+      config: error.config ? {
+        url: error.config.url,
+        params: error.config.params
+      } : 'No config data'
+    });
+    throw error;
   }
 }
 
