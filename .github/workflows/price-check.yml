@@ -1,0 +1,42 @@
+name: Flight Price Check
+
+on:
+  schedule:
+    - cron: "0 * * * *" # Run hourly
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "gh-pages"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run price check
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
+        run: node fetch-check.js
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+      - name: Push changes
+        run: |
+          git add price.json
+          git commit -m "Update flight prices"
+          git push
