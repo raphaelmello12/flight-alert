@@ -3,12 +3,12 @@
     "origin": "SFO",
     "destination": "JFK",
     "departureDateRange": {
-      "start": "2025-05-01",
-      "end": "2025-05-05"
+      "start": "2024-06-01",
+      "end": "2024-06-05"
     },
     "returnDateRange": {
-      "start": "2025-05-07",
-      "end": "2025-05-10"
+      "start": "2024-06-07",
+      "end": "2024-06-10"
     },
     "passengers": 2,
     "maxPrice": 600
