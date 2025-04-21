@@ -32,9 +32,16 @@ async function updateSearchSettings(event) {
     };
 
     try {
-        const response = await fetch('/.github/workflows/deploy.yml/dispatch', {
+        // Get the repository owner and name from the URL
+        const pathParts = window.location.pathname.split('/');
+        const owner = pathParts[1];
+        const repo = pathParts[2] || 'flight-alert';
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
             method: 'POST',
             headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'Authorization': `Bearer ${localStorage.getItem('github_token')}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -58,7 +65,32 @@ async function updateSearchSettings(event) {
         }
     } catch (error) {
         console.error('Error updating settings:', error);
-        alert('Failed to update settings. Please try again later.');
+        
+        // Show a more helpful error message with instructions
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded';
+        errorMessage.innerHTML = `
+            <p class="font-bold">Failed to update settings</p>
+            <p class="text-sm">To update settings, please:</p>
+            <ol class="text-sm list-decimal list-inside">
+                <li>Go to <a href="https://github.com/settings/tokens" target="_blank" class="underline">GitHub Personal Access Tokens</a></li>
+                <li>Generate a new token with 'workflow' permissions</li>
+                <li>Copy the token and paste it below:</li>
+            </ol>
+            <input type="text" id="github_token" class="mt-2 w-full p-2 border rounded" placeholder="ghp_...">
+            <button onclick="saveToken()" class="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Save Token</button>
+        `;
+        document.body.appendChild(errorMessage);
+
+        // Add the saveToken function
+        window.saveToken = function() {
+            const token = document.getElementById('github_token').value;
+            if (token) {
+                localStorage.setItem('github_token', token);
+                errorMessage.remove();
+                alert('Token saved! Please try updating the settings again.');
+            }
+        };
     }
 }
 
