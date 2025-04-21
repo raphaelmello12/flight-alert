@@ -19,6 +19,13 @@ async function fetchData() {
 
 async function updateSearchSettings(event) {
     event.preventDefault();
+    
+    const token = localStorage.getItem('github_token');
+    if (!token) {
+        showError('No token found. Please enter your GitHub token.');
+        return;
+    }
+
     const formData = new FormData(event.target);
     
     const route1 = {
@@ -32,20 +39,10 @@ async function updateSearchSettings(event) {
     };
 
     try {
-        const token = localStorage.getItem('github_token');
-        if (!token) {
-            throw new Error('No token found');
-        }
-
-        // Get the repository owner and name from the URL
-        const pathParts = window.location.pathname.split('/');
-        const owner = pathParts[1];
-        const repo = pathParts[2] || 'flight-alert';
-
         console.log('Updating settings with token:', token.substring(0, 4) + '...');
         console.log('Repository:', `${owner}/${repo}`);
 
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/price-check.yml/dispatches`, {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
@@ -107,47 +104,79 @@ window.saveToken = function() {
     const token = tokenInput.value.trim();
     
     if (token) {
+        // Save token to localStorage
         localStorage.setItem('github_token', token);
         console.log('Token saved:', token.substring(0, 4) + '...');
         
-        // Remove the error message
-        const errorMessage = document.querySelector('.settings-error');
-        if (errorMessage) {
-            errorMessage.remove();
-        }
+        // Remove any existing messages
+        document.querySelectorAll('.settings-error, .settings-success').forEach(el => el.remove());
         
         // Show success message
         const successMessage = document.createElement('div');
-        successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded';
+        successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded settings-success';
         successMessage.innerHTML = `
             <p>Token saved successfully!</p>
-            <p class="text-sm">You can now update your search settings.</p>
+            <p class="text-sm">Updating settings...</p>
         `;
         document.body.appendChild(successMessage);
         
-        // Wait a short moment before triggering the form submission
+        // Wait for localStorage to be updated
         setTimeout(() => {
-            // Remove success message
-            successMessage.remove();
-            
-            // Get the form and trigger submit only if it exists
-            const searchForm = document.getElementById('searchForm');
-            if (searchForm) {
-                // Create and dispatch a submit event
-                const submitEvent = new Event('submit', {
-                    bubbles: true,
-                    cancelable: true
-                });
-                searchForm.dispatchEvent(submitEvent);
+            // Verify token was saved
+            const savedToken = localStorage.getItem('github_token');
+            if (savedToken === token) {
+                // Token was saved successfully, try to update settings
+                const searchForm = document.getElementById('searchForm');
+                if (searchForm) {
+                    try {
+                        const submitEvent = new Event('submit', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        searchForm.dispatchEvent(submitEvent);
+                    } catch (error) {
+                        console.error('Error submitting form:', error);
+                        showError('Failed to update settings. Please try again.');
+                    }
+                }
+            } else {
+                showError('Failed to save token. Please try again.');
             }
-        }, 1500); // Wait 1.5 seconds before submitting
+            
+            // Remove success message after 3 seconds
+            setTimeout(() => {
+                const msg = document.querySelector('.settings-success');
+                if (msg) msg.remove();
+            }, 3000);
+        }, 1000);
     }
 };
 
-// Check token on page load
+function showError(message) {
+    // Remove any existing error messages
+    document.querySelectorAll('.settings-error').forEach(el => el.remove());
+    
+    // Show new error message
+    const errorMessage = document.createElement('div');
+    errorMessage.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded settings-error';
+    errorMessage.innerHTML = `
+        <p class="font-bold">Error</p>
+        <p class="text-sm">${message}</p>
+    `;
+    document.body.appendChild(errorMessage);
+    
+    // Remove error message after 5 seconds
+    setTimeout(() => {
+        errorMessage.remove();
+    }, 5000);
+}
+
+// Add token verification on page load
 window.addEventListener('load', function() {
     const token = localStorage.getItem('github_token');
-    console.log('Token status on load:', token ? 'exists' : 'not found');
+    if (token) {
+        console.log('Token found on load:', token.substring(0, 4) + '...');
+    }
 });
 
 function formatPriceHistory(history) {
