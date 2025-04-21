@@ -45,7 +45,7 @@ async function updateSearchSettings(event) {
         console.log('Updating settings with token:', token.substring(0, 4) + '...');
         console.log('Repository:', `${owner}/${repo}`);
 
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/price-check.yml/dispatches`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
@@ -129,6 +129,9 @@ window.saveToken = function() {
         setTimeout(() => {
             successMessage.remove();
         }, 3000);
+        
+        // Trigger a form submission to update settings immediately
+        document.getElementById('searchForm').dispatchEvent(new Event('submit'));
     }
 };
 
