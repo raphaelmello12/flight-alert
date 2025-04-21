@@ -29,18 +29,32 @@
                     <div class="grid grid-cols-1 gap-4">
                         <div class="border-b pb-4">
                             <h4 class="font-medium mb-2">Departure Windows</h4>
-                            <div class="text-sm text-gray-600">
+                            <div class="text-sm text-gray-600 mb-4">
                                 <div>Window 1: Jan 1-7, 2026</div>
                                 <div>Window 2: Jan 8-14, 2026</div>
                                 <div>Window 3: Jan 15-21, 2026</div>
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Select Departure Day</label>
+                                <select name="departure_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="">Select day</option>
+                                    <!-- JavaScript will populate days 1-21 -->
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <h4 class="font-medium mb-2">Return Windows</h4>
-                            <div class="text-sm text-gray-600">
+                            <div class="text-sm text-gray-600 mb-4">
                                 <div>Window 1: Jan 15-21, 2026</div>
                                 <div>Window 2: Jan 22-28, 2026</div>
                                 <div>Window 3: Jan 29 - Feb 4, 2026</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Select Return Day</label>
+                                <select name="return_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="">Select day</option>
+                                    <!-- JavaScript will populate days 15-35 (up to Feb 4) -->
+                                </select>
                             </div>
                         </div>
                     </div>

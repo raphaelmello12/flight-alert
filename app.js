@@ -19,18 +19,34 @@ async function fetchData() {
 
 // Populate day selectors on page load
 function populateDaySelectors() {
-    const selectors = ['departure_day', 'return_day'];
-    selectors.forEach(selectorName => {
-        const select = document.querySelector(`select[name="${selectorName}"]`);
-        if (select) {
-            for (let day = 1; day <= 31; day++) {
-                const option = document.createElement('option');
-                option.value = day.toString().padStart(2, '0');
-                option.textContent = day.toString();
-                select.appendChild(option);
-            }
+    // Populate departure days (1-21 January)
+    const departureSelect = document.querySelector('select[name="departure_day"]');
+    if (departureSelect) {
+        for (let day = 1; day <= 21; day++) {
+            const option = document.createElement('option');
+            option.value = day.toString().padStart(2, '0');
+            option.textContent = `January ${day}`;
+            departureSelect.appendChild(option);
         }
-    });
+    }
+
+    // Populate return days (15 January - 4 February)
+    const returnSelect = document.querySelector('select[name="return_day"]');
+    if (returnSelect) {
+        for (let day = 15; day <= 31; day++) {
+            const option = document.createElement('option');
+            option.value = day.toString().padStart(2, '0');
+            option.textContent = `January ${day}`;
+            returnSelect.appendChild(option);
+        }
+        // Add February days
+        for (let day = 1; day <= 4; day++) {
+            const option = document.createElement('option');
+            option.value = (day + 31).toString().padStart(2, '0'); // 32-35 for Feb 1-4
+            option.textContent = `February ${day}`;
+            returnSelect.appendChild(option);
+        }
+    }
 }
 
 // Check for token on page load
@@ -120,6 +136,16 @@ async function updateSearchSettings(event) {
         return;
     }
 
+    // Convert return day value for February dates
+    let returnDate;
+    if (parseInt(returnDay) > 31) {
+        // It's a February date
+        const febDay = parseInt(returnDay) - 31;
+        returnDate = `2026-02-${febDay.toString().padStart(2, '0')}`;
+    } else {
+        returnDate = `2026-01-${returnDay}`;
+    }
+
     // Fixed routes
     const route1 = {
         origin: "GRU",
@@ -138,9 +164,7 @@ async function updateSearchSettings(event) {
         console.log('Updating settings with token:', token.substring(0, 4) + '...');
         console.log('Repository:', `${owner}/${repo}`);
 
-        // Format dates for January 2026
         const departureDate = `2026-01-${departureDay}`;
-        const returnDate = `2026-01-${returnDay}`;
 
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
             method: 'POST',
