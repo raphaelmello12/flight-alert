@@ -2,7 +2,6 @@ require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const simpleGit = require('simple-git');
 const { sendNotifications } = require('./notify');
 
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
@@ -12,12 +11,7 @@ const HISTORY_FILE = 'price-history.json';
 
 async function fetchSingleRoute(searchConfig) {
   try {
-    console.log(`Starting flight search for ${searchConfig.name}:`, {
-      origin: searchConfig.origin,
-      destination: searchConfig.destination,
-      outbound_date: searchConfig.departureDateRange.start,
-      return_date: searchConfig.returnDateRange.start
-    });
+    console.log(`Starting flight search for ${searchConfig.origin} → ${searchConfig.destination}`);
 
     const response = await axios.get('https://serpapi.com/search.json', {
       params: {
@@ -33,37 +27,47 @@ async function fetchSingleRoute(searchConfig) {
       }
     });
 
-    console.log(`API Response status for ${searchConfig.name}:`, response.status);
+    console.log(`API Response status: ${response.status}`);
 
     if (!response.data.best_flights || !Array.isArray(response.data.best_flights)) {
-      console.log(`No flights found for ${searchConfig.name}, creating mock data`);
+      console.log('No flights found, creating mock data');
       return [{
         price: config.maxPrice + 100,
         departureDate: searchConfig.departureDateRange.start,
         returnDate: searchConfig.returnDateRange.start,
-        airline: 'Sample Airline',
-        route: searchConfig.name
+        airline: 'No flights found',
+        source: 'Google Flights',
+        route: `${searchConfig.origin} → ${searchConfig.destination}`
       }];
     }
 
-    return response.data.best_flights.map(flight => ({
+    // Sort flights by price to get the cheapest ones
+    const sortedFlights = response.data.best_flights.sort((a, b) => {
+      const priceA = typeof a.price === 'string' ? parseFloat(a.price.replace(/[^0-9.]/g, '')) : a.price;
+      const priceB = typeof b.price === 'string' ? parseFloat(b.price.replace(/[^0-9.]/g, '')) : b.price;
+      return priceA - priceB;
+    });
+
+    return sortedFlights.map(flight => ({
       price: typeof flight.price === 'string' ? 
         parseFloat(flight.price.replace(/[^0-9.]/g, '')) : 
         flight.price,
       departureDate: flight.departure_date || searchConfig.departureDateRange.start,
       returnDate: flight.return_date || searchConfig.returnDateRange.start,
-      deepLink: `https://www.google.com/travel/flights?q=Flights%20from%20${searchConfig.origin}%20to%20${searchConfig.destination}`,
+      deepLink: flight.booking_link || `https://www.google.com/travel/flights?q=Flights%20from%20${searchConfig.origin}%20to%20${searchConfig.destination}`,
       airline: flight.airline || 'Multiple Airlines',
-      route: searchConfig.name
+      source: flight.source || 'Google Flights',
+      route: `${searchConfig.origin} → ${searchConfig.destination}`
     }));
   } catch (error) {
-    console.error(`Error fetching flights for ${searchConfig.name}:`, error.message);
+    console.error(`Error fetching flights: ${error.message}`);
     return [{
       price: config.maxPrice + 100,
       departureDate: searchConfig.departureDateRange.start,
       returnDate: searchConfig.returnDateRange.start,
       airline: 'Error fetching flights',
-      route: searchConfig.name
+      source: 'Error',
+      route: `${searchConfig.origin} → ${searchConfig.destination}`
     }];
   }
 }
@@ -102,21 +106,19 @@ async function fetchFlights() {
       lastChecked: timestamp,
       flights: allFlights,
       currency: config.currency,
-      config: {
-        searches: config.searches,
-        maxPrice: config.maxPrice,
-        passengers: config.passengers
-      },
+      config: config,
       history
     };
 
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 
-    // Check for flights under threshold
+    // Check for flights under threshold and send notifications for the cheapest ones
     const cheapFlights = allFlights.filter(f => f.price <= config.maxPrice);
     if (cheapFlights.length > 0) {
-      await sendNotifications(cheapFlights);
+      // Sort by price and get the cheapest ones
+      const cheapestFlights = cheapFlights.sort((a, b) => a.price - b.price);
+      await sendNotifications(cheapestFlights);
     }
 
     console.log('Successfully completed all flight checks');
@@ -129,11 +131,7 @@ async function fetchFlights() {
       lastChecked: new Date().toISOString(),
       flights: [],
       currency: config.currency,
-      config: {
-        searches: config.searches,
-        maxPrice: config.maxPrice,
-        passengers: config.passengers
-      },
+      config: config,
       history: []
     };
     fs.writeFileSync(RESULTS_FILE, JSON.stringify(results, null, 2));

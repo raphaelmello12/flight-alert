@@ -17,6 +17,51 @@ async function fetchData() {
     }
 }
 
+async function updateSearchSettings(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const route1 = {
+        origin: formData.get('route1_origin'),
+        destination: formData.get('route1_dest')
+    };
+    
+    const route2 = {
+        origin: formData.get('route2_origin'),
+        destination: formData.get('route2_dest')
+    };
+
+    try {
+        const response = await fetch('/.github/workflows/deploy.yml/dispatch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ref: 'main',
+                inputs: {
+                    route1: JSON.stringify(route1),
+                    route2: JSON.stringify(route2),
+                    departure_date_start: formData.get('departure_date_start'),
+                    departure_date_end: formData.get('departure_date_end'),
+                    return_date_start: formData.get('return_date_start'),
+                    return_date_end: formData.get('return_date_end'),
+                    max_price: formData.get('max_price')
+                }
+            })
+        });
+
+        if (response.ok) {
+            alert('Search settings updated! The new results will be available in a few minutes.');
+        } else {
+            throw new Error('Failed to update settings');
+        }
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        alert('Failed to update settings. Please try again later.');
+    }
+}
+
 function formatPriceHistory(history) {
     if (!history || history.length === 0) return '';
 
@@ -98,7 +143,7 @@ function updateUI(data) {
     document.getElementById('config').innerHTML = configHtml;
 
     // Update flights display
-    if (data.flights.length === 0) {
+    if (!data.flights || data.flights.length === 0) {
         document.getElementById('flights').innerHTML = `
             <div class="text-center text-gray-500">
                 No flights found matching your criteria.
@@ -110,7 +155,12 @@ function updateUI(data) {
     const flightsHtml = data.flights.map(flight => `
         <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
             <div class="flex justify-between items-center mb-2">
-                <span class="text-2xl font-bold text-blue-600">${data.currency} ${flight.price}</span>
+                <span class="text-2xl font-bold ${flight.price <= data.config.maxPrice ? 'text-green-600' : 'text-blue-600'}">
+                    ${data.currency} ${flight.price}
+                    ${flight.price <= data.config.maxPrice ? 
+                        '<span class="text-sm font-normal text-green-600">✓ Below alert price!</span>' : 
+                        ''}
+                </span>
                 <span class="text-sm text-gray-600">${flight.airline}</span>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -123,11 +173,14 @@ function updateUI(data) {
                     <div>${new Date(flight.returnDate).toLocaleDateString()}</div>
                 </div>
             </div>
+            <div class="text-sm text-gray-600 mb-4">
+                Found on: ${flight.source || 'Google Flights'}
+            </div>
             <a href="${flight.deepLink}" 
                target="_blank" 
                rel="noopener noreferrer"
                class="block w-full text-center bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors">
-                Book Now
+                Book on ${flight.source || 'Google Flights'}
             </a>
         </div>
     `).join('');
@@ -172,6 +225,9 @@ function updateUI(data) {
         });
     });
 }
+
+// Set up form submission handler
+document.getElementById('searchForm').addEventListener('submit', updateSearchSettings);
 
 // Initial load
 fetchData();
