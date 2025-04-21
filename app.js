@@ -39,6 +39,11 @@ async function updateSearchSettings(event) {
     };
 
     try {
+        // Get the repository owner and name from the URL
+        const pathParts = window.location.pathname.split('/');
+        const owner = pathParts[1] || 'raphaelmello12';  // Default to your username if not in path
+        const repo = pathParts[2] || 'flight-alert';
+
         console.log('Updating settings with token:', token.substring(0, 4) + '...');
         console.log('Repository:', `${owner}/${repo}`);
 
@@ -64,7 +69,17 @@ async function updateSearchSettings(event) {
         });
 
         if (response.ok) {
-            alert('Search settings updated! The new results will be available in a few minutes.');
+            const successMessage = document.createElement('div');
+            successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded';
+            successMessage.innerHTML = `
+                <p>Settings updated successfully!</p>
+                <p class="text-sm">The new results will be available in a few minutes.</p>
+            `;
+            document.body.appendChild(successMessage);
+            
+            setTimeout(() => {
+                successMessage.remove();
+            }, 3000);
         } else {
             const errorData = await response.text();
             console.error('GitHub API Error:', errorData);
@@ -72,29 +87,7 @@ async function updateSearchSettings(event) {
         }
     } catch (error) {
         console.error('Error updating settings:', error);
-        
-        // Remove any existing error message
-        const existingError = document.querySelector('.settings-error');
-        if (existingError) {
-            existingError.remove();
-        }
-        
-        // Show a more helpful error message with instructions
-        const errorMessage = document.createElement('div');
-        errorMessage.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded settings-error';
-        errorMessage.innerHTML = `
-            <p class="font-bold">Failed to update settings</p>
-            <p class="text-sm">To update settings, please:</p>
-            <ol class="text-sm list-decimal list-inside">
-                <li>Go to <a href="https://github.com/settings/tokens" target="_blank" class="underline">GitHub Personal Access Tokens</a></li>
-                <li>Generate a new token with 'workflow' permissions</li>
-                <li>Copy the token and paste it below:</li>
-            </ol>
-            <input type="text" id="github_token" class="mt-2 w-full p-2 border rounded" placeholder="ghp_...">
-            <button onclick="saveToken()" class="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Save Token</button>
-            <p class="text-xs mt-2">Current token: ${localStorage.getItem('github_token') ? '(token exists)' : '(no token)'}</p>
-        `;
-        document.body.appendChild(errorMessage);
+        showError(error.message || 'Failed to update settings. Please try again.');
     }
 }
 
