@@ -8,11 +8,35 @@
       "destination": "OPO",
       "departureDateRange": {
         "start": "2026-01-01",
-        "end": "2026-01-15"
+        "end": "2026-01-07"
       },
       "returnDateRange": {
         "start": "2026-01-15",
-        "end": "2026-01-31"
+        "end": "2026-01-21"
+      }
+    },
+    {
+      "origin": "GRU",
+      "destination": "OPO",
+      "departureDateRange": {
+        "start": "2026-01-08",
+        "end": "2026-01-14"
+      },
+      "returnDateRange": {
+        "start": "2026-01-22",
+        "end": "2026-01-28"
+      }
+    },
+    {
+      "origin": "GRU",
+      "destination": "OPO",
+      "departureDateRange": {
+        "start": "2026-01-15",
+        "end": "2026-01-21"
+      },
+      "returnDateRange": {
+        "start": "2026-01-29",
+        "end": "2026-02-04"
       }
     },
     {
@@ -20,11 +44,23 @@
       "destination": "LIS",
       "departureDateRange": {
         "start": "2026-01-01",
-        "end": "2026-01-15"
+        "end": "2026-01-07"
       },
       "returnDateRange": {
         "start": "2026-01-15",
-        "end": "2026-01-31"
+        "end": "2026-01-21"
+      }
+    },
+    {
+      "origin": "GRU",
+      "destination": "LIS",
+      "departureDateRange": {
+        "start": "2026-01-08",
+        "end": "2026-01-14"
+      },
+      "returnDateRange": {
+        "start": "2026-01-22",
+        "end": "2026-01-28"
       }
     }
   ],

@@ -315,12 +315,16 @@ function updateUI(data) {
                         '<span class="text-sm font-normal text-green-600">✓ Below alert price!</span>' : 
                         ''}
                 </span>
-                <span class="text-sm text-gray-600">${flight.airline}</span>
+                <span class="text-sm text-gray-600">${flight.airline || 'Multiple Airlines'}</span>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <div class="text-sm text-gray-500">Route</div>
-                    <div class="font-medium">${flight.origin} → ${flight.destination}</div>
+                    <div class="font-medium">
+                        ${flight.destination === 'OPO' ? 'GRU → Porto (OPO)' : 
+                          flight.destination === 'LIS' ? 'GRU → Lisboa (LIS)' : 
+                          `${flight.origin || 'GRU'} → ${flight.destination}`}
+                    </div>
                 </div>
                 <div>
                     <div class="text-sm text-gray-500">Airline</div>
