@@ -17,35 +17,130 @@ async function fetchData() {
     }
 }
 
+// Populate day selectors on page load
+function populateDaySelectors() {
+    const selectors = ['departure_day', 'return_day'];
+    selectors.forEach(selectorName => {
+        const select = document.querySelector(`select[name="${selectorName}"]`);
+        if (select) {
+            for (let day = 1; day <= 31; day++) {
+                const option = document.createElement('option');
+                option.value = day.toString().padStart(2, '0');
+                option.textContent = day.toString();
+                select.appendChild(option);
+            }
+        }
+    });
+}
+
+// Check for token on page load
+window.addEventListener('load', function() {
+    populateDaySelectors();
+    const token = localStorage.getItem('github_token');
+    if (!token) {
+        showTokenInput();
+    }
+});
+
+function showTokenInput() {
+    // Remove any existing token input
+    const existingToken = document.querySelector('.token-input');
+    if (existingToken) {
+        existingToken.remove();
+    }
+
+    const tokenDiv = document.createElement('div');
+    tokenDiv.className = 'fixed top-4 right-4 bg-white border border-gray-300 p-4 rounded shadow-lg token-input';
+    tokenDiv.innerHTML = `
+        <p class="font-bold mb-2">GitHub Token Required</p>
+        <p class="text-sm mb-4">To update settings, please:</p>
+        <ol class="text-sm list-decimal list-inside mb-4">
+            <li>Go to <a href="https://github.com/settings/tokens" target="_blank" class="text-blue-600 underline">GitHub Personal Access Tokens</a></li>
+            <li>Generate a new token with 'workflow' permissions</li>
+            <li>Copy the token and paste it below:</li>
+        </ol>
+        <input type="text" id="github_token" class="w-full p-2 border rounded mb-2" placeholder="ghp_...">
+        <button onclick="saveToken()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save Token</button>
+    `;
+    document.body.appendChild(tokenDiv);
+}
+
+window.saveToken = function() {
+    const tokenInput = document.getElementById('github_token');
+    const token = tokenInput.value.trim();
+    
+    if (!token) {
+        showError('Please enter a valid token');
+        return;
+    }
+
+    if (!token.startsWith('ghp_')) {
+        showError('Invalid token format. Token should start with "ghp_"');
+        return;
+    }
+
+    localStorage.setItem('github_token', token);
+    console.log('Token saved:', token.substring(0, 4) + '...');
+    
+    // Remove token input
+    const tokenDiv = document.querySelector('.token-input');
+    if (tokenDiv) {
+        tokenDiv.remove();
+    }
+
+    // Show success message
+    const successMessage = document.createElement('div');
+    successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded settings-success';
+    successMessage.innerHTML = `
+        <p>Token saved successfully!</p>
+        <p class="text-sm">You can now update your search settings.</p>
+    `;
+    document.body.appendChild(successMessage);
+    
+    setTimeout(() => {
+        successMessage.remove();
+    }, 3000);
+};
+
 async function updateSearchSettings(event) {
     event.preventDefault();
     
     const token = localStorage.getItem('github_token');
     if (!token) {
-        showError('No token found. Please enter your GitHub token.');
+        showTokenInput();
         return;
     }
 
     const formData = new FormData(event.target);
+    const departureDay = formData.get('departure_day');
+    const returnDay = formData.get('return_day');
     
+    if (!departureDay || !returnDay) {
+        showError('Please select both departure and return days');
+        return;
+    }
+
+    // Fixed routes
     const route1 = {
-        origin: formData.get('route1_origin'),
-        destination: formData.get('route1_dest')
+        origin: "GRU",
+        destination: "OPO"
     };
     
     const route2 = {
-        origin: formData.get('route2_origin'),
-        destination: formData.get('route2_dest')
+        origin: "GRU",
+        destination: "LIS"
     };
 
     try {
-        // Get the repository owner and name from the URL
-        const pathParts = window.location.pathname.split('/');
-        const owner = pathParts[1] || 'raphaelmello12';  // Default to your username if not in path
-        const repo = pathParts[2] || 'flight-alert';
+        const owner = 'raphaelmello12';
+        const repo = 'flight-alert';
 
         console.log('Updating settings with token:', token.substring(0, 4) + '...');
         console.log('Repository:', `${owner}/${repo}`);
+
+        // Format dates for January 2026
+        const departureDate = `2026-01-${departureDay}`;
+        const returnDate = `2026-01-${returnDay}`;
 
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
             method: 'POST',
@@ -59,10 +154,10 @@ async function updateSearchSettings(event) {
                 inputs: {
                     route1: JSON.stringify(route1),
                     route2: JSON.stringify(route2),
-                    departure_date_start: formData.get('departure_date_start'),
-                    departure_date_end: formData.get('departure_date_end'),
-                    return_date_start: formData.get('return_date_start'),
-                    return_date_end: formData.get('return_date_end'),
+                    departure_date_start: departureDate,
+                    departure_date_end: departureDate,
+                    return_date_start: returnDate,
+                    return_date_end: returnDate,
                     max_price: formData.get('max_price')
                 }
             })
@@ -81,69 +176,26 @@ async function updateSearchSettings(event) {
                 successMessage.remove();
             }, 3000);
         } else {
-            const errorData = await response.text();
-            console.error('GitHub API Error:', errorData);
-            throw new Error(`Failed to update settings: ${response.status} ${response.statusText}`);
+            if (response.status === 403) {
+                localStorage.removeItem('github_token');
+                showTokenInput();
+                throw new Error('Token invalid or expired. Please enter a new token.');
+            } else {
+                const errorData = await response.text();
+                console.error('GitHub API Error:', errorData);
+                throw new Error(`Failed to update settings: ${response.status} ${response.statusText}`);
+            }
         }
     } catch (error) {
         console.error('Error updating settings:', error);
         showError(error.message || 'Failed to update settings. Please try again.');
+        
+        if (error.message.includes('Token invalid') || error.status === 403) {
+            localStorage.removeItem('github_token');
+            showTokenInput();
+        }
     }
 }
-
-// Add the saveToken function to the window object
-window.saveToken = function() {
-    const tokenInput = document.getElementById('github_token');
-    const token = tokenInput.value.trim();
-    
-    if (token) {
-        // Save token to localStorage
-        localStorage.setItem('github_token', token);
-        console.log('Token saved:', token.substring(0, 4) + '...');
-        
-        // Remove any existing messages
-        document.querySelectorAll('.settings-error, .settings-success').forEach(el => el.remove());
-        
-        // Show success message
-        const successMessage = document.createElement('div');
-        successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded settings-success';
-        successMessage.innerHTML = `
-            <p>Token saved successfully!</p>
-            <p class="text-sm">Updating settings...</p>
-        `;
-        document.body.appendChild(successMessage);
-        
-        // Wait for localStorage to be updated
-        setTimeout(() => {
-            // Verify token was saved
-            const savedToken = localStorage.getItem('github_token');
-            if (savedToken === token) {
-                // Token was saved successfully, try to update settings
-                const searchForm = document.getElementById('searchForm');
-                if (searchForm) {
-                    try {
-                        const submitEvent = new Event('submit', {
-                            bubbles: true,
-                            cancelable: true
-                        });
-                        searchForm.dispatchEvent(submitEvent);
-                    } catch (error) {
-                        console.error('Error submitting form:', error);
-                        showError('Failed to update settings. Please try again.');
-                    }
-                }
-            } else {
-                showError('Failed to save token. Please try again.');
-            }
-            
-            // Remove success message after 3 seconds
-            setTimeout(() => {
-                const msg = document.querySelector('.settings-success');
-                if (msg) msg.remove();
-            }, 3000);
-        }, 1000);
-    }
-};
 
 function showError(message) {
     // Remove any existing error messages
@@ -163,14 +215,6 @@ function showError(message) {
         errorMessage.remove();
     }, 5000);
 }
-
-// Add token verification on page load
-window.addEventListener('load', function() {
-    const token = localStorage.getItem('github_token');
-    if (token) {
-        console.log('Token found on load:', token.substring(0, 4) + '...');
-    }
-});
 
 function formatPriceHistory(history) {
     if (!history || history.length === 0) return '';
@@ -344,11 +388,8 @@ function updateUI(data) {
     });
 }
 
-// Set up form submission handler
+// Add form submission handler
 document.getElementById('searchForm').addEventListener('submit', updateSearchSettings);
 
-// Initial load
-fetchData();
-
-// Refresh every 5 minutes
-setInterval(fetchData, 5 * 60 * 1000); 
+// Initial data load
+fetchData(); 

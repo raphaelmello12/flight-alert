@@ -14,49 +14,32 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-xl font-semibold mb-4">Search Settings</h2>
             <form id="searchForm" class="space-y-6">
-                <!-- Route 1 -->
-                <div class="border p-4 rounded-lg">
-                    <h3 class="font-medium mb-4">Route 1</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Origin</label>
-                            <input type="text" name="route1_origin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="GRU">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Destination</label>
-                            <input type="text" name="route1_dest" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="MIA">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Route 2 -->
-                <div class="border p-4 rounded-lg">
-                    <h3 class="font-medium mb-4">Route 2</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Origin</label>
-                            <input type="text" name="route2_origin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="GRU">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Destination</label>
-                            <input type="text" name="route2_dest" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="JFK">
-                        </div>
+                <!-- Fixed Routes Info -->
+                <div class="border p-4 rounded-lg bg-gray-50">
+                    <h3 class="font-medium mb-4">Fixed Routes</h3>
+                    <div class="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                        <div>Route 1: GRU → OPO (Porto)</div>
+                        <div>Route 2: GRU → LIS (Lisboa)</div>
                     </div>
                 </div>
 
                 <!-- Dates -->
                 <div class="border p-4 rounded-lg">
-                    <h3 class="font-medium mb-4">Travel Dates</h3>
+                    <h3 class="font-medium mb-4">Travel Dates (January 2026)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Departure Date Range</label>
-                            <input type="date" name="departure_date_start" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            <input type="date" name="departure_date_end" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700">Departure Day</label>
+                            <select name="departure_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">Select day</option>
+                                <!-- JavaScript will populate days 1-31 -->
+                            </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Return Date Range</label>
-                            <input type="date" name="return_date_start" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            <input type="date" name="return_date_end" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <label class="block text-sm font-medium text-gray-700">Return Day</label>
+                            <select name="return_day" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="">Select day</option>
+                                <!-- JavaScript will populate days 1-31 -->
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -66,7 +49,7 @@
                     <h3 class="font-medium mb-4">Price Alert</h3>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Alert me when price is below (BRL)</label>
-                        <input type="number" name="max_price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="1000">
+                        <input type="number" name="max_price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="5000">
                     </div>
                 </div>
 
