@@ -42,7 +42,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -66,6 +66,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
           npm install
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
       
       - name: Update config
         run: |
@@ -125,8 +128,12 @@ jobs:
           TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
         run: node fetch-check.js
 
-      - name: List files before upload
-        run: ls -la
+      - name: List files
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo "Files to be deployed:"
+          find . -type f -not -path '*/\.*' -not -path '*/node_modules/*'
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
