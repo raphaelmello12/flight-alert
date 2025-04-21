@@ -125,13 +125,22 @@ window.saveToken = function() {
         `;
         document.body.appendChild(successMessage);
         
-        // Remove success message after 3 seconds
+        // Wait a short moment before triggering the form submission
         setTimeout(() => {
+            // Remove success message
             successMessage.remove();
-        }, 3000);
-        
-        // Trigger a form submission to update settings immediately
-        document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+            
+            // Get the form and trigger submit only if it exists
+            const searchForm = document.getElementById('searchForm');
+            if (searchForm) {
+                // Create and dispatch a submit event
+                const submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                searchForm.dispatchEvent(submitEvent);
+            }
+        }, 1500); // Wait 1.5 seconds before submitting
     }
 };
 
@@ -243,6 +252,14 @@ function updateUI(data) {
                 <span class="text-sm text-gray-600">${flight.airline}</span>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <div class="text-sm text-gray-500">Route</div>
+                    <div class="font-medium">${flight.origin} → ${flight.destination}</div>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">Airline</div>
+                    <div>${flight.airline || 'Multiple Airlines'}</div>
+                </div>
                 <div>
                     <div class="text-sm text-gray-500">Departure</div>
                     <div>${new Date(flight.departureDate).toLocaleDateString()}</div>
