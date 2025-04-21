@@ -32,16 +32,24 @@ async function updateSearchSettings(event) {
     };
 
     try {
+        const token = localStorage.getItem('github_token');
+        if (!token) {
+            throw new Error('No token found');
+        }
+
         // Get the repository owner and name from the URL
         const pathParts = window.location.pathname.split('/');
         const owner = pathParts[1];
         const repo = pathParts[2] || 'flight-alert';
 
+        console.log('Updating settings with token:', token.substring(0, 4) + '...');
+        console.log('Repository:', `${owner}/${repo}`);
+
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
-                'Authorization': `Bearer ${localStorage.getItem('github_token')}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -61,14 +69,22 @@ async function updateSearchSettings(event) {
         if (response.ok) {
             alert('Search settings updated! The new results will be available in a few minutes.');
         } else {
-            throw new Error('Failed to update settings');
+            const errorData = await response.text();
+            console.error('GitHub API Error:', errorData);
+            throw new Error(`Failed to update settings: ${response.status} ${response.statusText}`);
         }
     } catch (error) {
         console.error('Error updating settings:', error);
         
+        // Remove any existing error message
+        const existingError = document.querySelector('.settings-error');
+        if (existingError) {
+            existingError.remove();
+        }
+        
         // Show a more helpful error message with instructions
         const errorMessage = document.createElement('div');
-        errorMessage.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded';
+        errorMessage.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded settings-error';
         errorMessage.innerHTML = `
             <p class="font-bold">Failed to update settings</p>
             <p class="text-sm">To update settings, please:</p>
@@ -79,20 +95,48 @@ async function updateSearchSettings(event) {
             </ol>
             <input type="text" id="github_token" class="mt-2 w-full p-2 border rounded" placeholder="ghp_...">
             <button onclick="saveToken()" class="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Save Token</button>
+            <p class="text-xs mt-2">Current token: ${localStorage.getItem('github_token') ? '(token exists)' : '(no token)'}</p>
         `;
         document.body.appendChild(errorMessage);
-
-        // Add the saveToken function
-        window.saveToken = function() {
-            const token = document.getElementById('github_token').value;
-            if (token) {
-                localStorage.setItem('github_token', token);
-                errorMessage.remove();
-                alert('Token saved! Please try updating the settings again.');
-            }
-        };
     }
 }
+
+// Add the saveToken function to the window object
+window.saveToken = function() {
+    const tokenInput = document.getElementById('github_token');
+    const token = tokenInput.value.trim();
+    
+    if (token) {
+        localStorage.setItem('github_token', token);
+        console.log('Token saved:', token.substring(0, 4) + '...');
+        
+        // Remove the error message
+        const errorMessage = document.querySelector('.settings-error');
+        if (errorMessage) {
+            errorMessage.remove();
+        }
+        
+        // Show success message
+        const successMessage = document.createElement('div');
+        successMessage.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded';
+        successMessage.innerHTML = `
+            <p>Token saved successfully!</p>
+            <p class="text-sm">You can now update your search settings.</p>
+        `;
+        document.body.appendChild(successMessage);
+        
+        // Remove success message after 3 seconds
+        setTimeout(() => {
+            successMessage.remove();
+        }, 3000);
+    }
+};
+
+// Check token on page load
+window.addEventListener('load', function() {
+    const token = localStorage.getItem('github_token');
+    console.log('Token status on load:', token ? 'exists' : 'not found');
+});
 
 function formatPriceHistory(history) {
     if (!history || history.length === 0) return '';
